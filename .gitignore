@@ -1,0 +1,8 @@
+secret.txt
+client_id.txt
+log.txt
+blacklist.txt
+playlists_local
+playlists_remote
+cache
+__pycache__
