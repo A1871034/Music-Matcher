@@ -52,6 +52,9 @@ from playlist_creator import song_matcher
 # MATCHER
 # -t / --use-cached-converted : Use cached converted tracks
 # -c / --cache : Cache the formated tracks in converted folder
+# -p / --omit-song-album-postfixes : Omit anything after (inclusive), " - ", "(", "[" in song names or album names
+#                                    used when local files track names differ from spotify, eg, "Romantic Flight [3m25]" and "Romantic Flight - From How To Train Your Dragon Music From The Motion Picture"
+#                                    DEFAULT: requries a mostly exact match, ie, some stripping and case insensitivity
 # --playlist-path-location <path> : Use when the converted music will be stored elsewhere
 #                                   DEFAULT: will use converted path (arg[0])
 # --output-path <path> : Path to where output folders will be created and filled with matched playlists
@@ -62,7 +65,7 @@ from playlist_creator import song_matcher
 class parser():
     def __init__(self, argv):
         try:
-            self.options, self.args = getopt.getopt(argv, "vlobcmtc",
+            self.options, self.args = getopt.getopt(argv, "vlobcmtcp",
                                ["verbose",
                                 "log",
                                 "log-file=",
@@ -81,6 +84,7 @@ class parser():
                                 "owned-by-user=",
                                 "collaborative",
                                 "use-cached-converted",
+                                "omit-song-album-postfixes",
                                 "playlist-path-location=",
                                 "output-path="
                                 ])
@@ -146,6 +150,8 @@ class parser():
             # MATCHER
             elif o in ("-t", "--use-cached-converted"):
                 self.USE_CACHED_TRACKS = True
+            elif o in ("-p", "--omit-song-album-postfixes"):
+                self.OMMIT_ALBUMS_SONG_POSTFIXES = True
             elif o == "--playlist-path-location":
                 self.TRANSFERED_ROOT_PATH = self.remove_path_quotations(a)
             elif o == "--output-path":
@@ -193,6 +199,7 @@ class parser():
         self.TRANSFERED_ROOT_PATH = self.CONVERTED_ROOT_PATH
         self.OUTPUT_DIR = getcwd()
         self.USE_CACHED_TRACKS = False
+        self.OMMIT_ALBUMS_SONG_POSTFIXES = False
 
 
 def FMCSPD():
@@ -229,7 +236,7 @@ def FMCSPD():
                         OWNED_BY_USER=settings.OWNED_BY_USER,
                         INCLUDE_COLLABORATIVE=settings.INCLUDE_COLLABORATIVE,
                         log=log)
-        sp_data = spotify_data(spotify_object=sp, filt=filt)
+        sp_data = spotify_data(spotify_object=sp, filt=filt, log=log)
         sp_data.get_tracks(cache_status=settings.cache_status,
                         CACHE_RESULTS=settings.CACHE_RESULTS)
         log.log("\n\n---------------------- MATCHING STAGE")
@@ -240,6 +247,7 @@ def FMCSPD():
                             MIN_PLAYLIST_SONGS=settings.MIN_SONGS_IN_PLAYLIST,
                             USE_CACHED_TRACKS=settings.USE_CACHED_TRACKS,
                             CACHE=settings.CACHE_RESULTS,
+                            OMMIT_ALBUMS_SONG_POSTFIXES=settings.OMMIT_ALBUMS_SONG_POSTFIXES,
                             log=log)
         matcher.run(tracks=sp_data.tracks)
 
