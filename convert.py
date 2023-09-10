@@ -4,7 +4,7 @@ import os
 import time
 
 from logger import logger
-import music_reader
+import music_image_reader
 
 # TODO: Only use mutagen for media tags / info
 class converter():
@@ -95,7 +95,7 @@ class converter():
             self.log.log("---- Songs: ↵\n"+"\n".join(new_songs))
 
             # Find Image
-            cover = music_reader.image_search(root, dirs, files, self.image_depth)
+            cover = music_image_reader.image_search(root, dirs, files, self.image_depth)
 
             # Create Converted Dir
             if not dir_created:
@@ -139,7 +139,7 @@ class converter():
                 continue
 
             # Check For Embeded Image
-            pic, pic_type = music_reader.read_image_from_music(file)
+            pic, pic_type = music_image_reader.read_image_from_music(file)
             if (pic and pic_type):
                 cover = f"{root}\\temp_cover{pic_type}"
                 self.log.log(f"- Embeded Cover Found -")
