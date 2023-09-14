@@ -1,6 +1,7 @@
 import requests
 import json
 import time
+from datetime import datetime
 import webbrowser
 import random
 import string
@@ -223,7 +224,8 @@ class formater():
                         "artists":artists,
                         "duration_ms":i["track"]["duration_ms"],
                         "track_number":i["track"]["track_number"],
-                        "added_at":i["added_at"]
+                        "added_at":i["added_at"],
+                        "added_at_epoch":datetime.strptime(i["added_at"], "%Y-%m-%dT%H:%M:%SZ").timestamp()
                         })
         return new
     
@@ -332,8 +334,12 @@ class spotify_data():
                 response = self.spotify.spotify_get(f"{response['next']}&fields=next,items(added_at,track(name,album(name,genres),artists(name,genres),duration_ms,track_number))")
                 cur_tracks.extend(response["items"])
 
-            tracks[playlist["name"]] = formater.format_tracks(cur_tracks) # will fail with same names but who has that and ill use id later
+            cur_tracks = formater.format_tracks(cur_tracks) # will fail with same names but who has that and ill use id later
+            cur_tracks.sort(key = lambda track: track["added_at_epoch"], reverse=True) 
+
+            tracks[playlist["name"]] = cur_tracks
         
+
         if CACHE_RESULTS:
             self.log.log(f"\n- Caching Tracks")
             with open("cache/tracks.json", "w") as f:
