@@ -75,23 +75,11 @@ class converter():
                     new_songs.append(file)
 
             # Gate no songs 
-            # TODO: should be changed to be better and not make unessescary folders
-            # TODO:2 Rewrite this shit
             dir_created = False
             if (len(new_songs) <= 0):
                 self.log.log("---- NO SONGS FOUND ----")
-                if len(dirs) <= 0:
-                    continue
-                
-                folder_existed=False
-                write_path = root.replace(self.path, self.write_path)
-                try:
-                    os.mkdir(write_path)
-                except FileExistsError:
-                    folder_existed=True
-                dir_created = True
                 continue
-
+    
             self.log.log("---- Songs: ↵\n"+"\n".join(new_songs))
 
             # Find Image
@@ -210,7 +198,7 @@ if __name__ == "__main__":
     # Log Settings
     logging = True
     mute = False
-    file = "log.txt"
+    file = "convert_log.txt"
     
     log = logger(file, logging, mute)
 
@@ -221,7 +209,7 @@ if __name__ == "__main__":
     image_depth = -1 # -1 for infinite recursion, 0 for none 1+ for that number depth
     
     try:
-        c = converter(music_dir, bitrate=bitrate, overwrite=overwrite, image_depth=image_depth, logger=log)
+        c = converter(music_dir, bitrate=bitrate, blacklist=True, overwrite=overwrite, image_depth=image_depth, log=log)
         c.convert()
     except KeyboardInterrupt as Err:
         log.log("------------ Keyboard Interrupt ------------")
