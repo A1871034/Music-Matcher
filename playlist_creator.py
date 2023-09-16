@@ -3,6 +3,8 @@ import os
 from pydub.utils import mediainfo
 from pydub import AudioSegment
 from logger import logger
+from string_utils import str_utils
+from song_scorer import song_scorer
 
 class playlist:
     def __init__(self, name, OUTPUT_DIR, ):
@@ -26,9 +28,9 @@ class playlist:
 # TODO: Reduce Scope
 class song_matcher:
     def __init__(self, CONVERTED_ROOT_PATH, TRANSFERED_ROOT_PATH, OUTPUT_DIR, MIN_PLAYLIST_SONGS=3, USE_CACHED_TRACKS = False, CACHE=True, OMMIT_ALBUMS_SONG_POSTFIXES=False, log=None):
-        self.CONVERTED_ROOT_PATH = self.ensure_path_end_slash(CONVERTED_ROOT_PATH)
-        self.TRANSFERED_ROOT_PATH = self.ensure_path_end_slash(TRANSFERED_ROOT_PATH)
-        self.OUTPUT_DIR = self.ensure_path_end_slash(OUTPUT_DIR)
+        self.CONVERTED_ROOT_PATH = str_utils.ensure_path_end_slash(CONVERTED_ROOT_PATH)
+        self.TRANSFERED_ROOT_PATH = str_utils.ensure_path_end_slash(TRANSFERED_ROOT_PATH)
+        self.OUTPUT_DIR = str_utils.ensure_path_end_slash(OUTPUT_DIR)
         self.MIN_PLAYLIST_SONGS = MIN_PLAYLIST_SONGS
         self.USE_CACHED_TRACKS = USE_CACHED_TRACKS
         self.CACHE = CACHE
@@ -57,188 +59,6 @@ class song_matcher:
             self.tag_aliases[key] = with_upper
 
         self.formats = ["mp3", "flac"]
-        
-    
-    class song_scorer:                
-            def __init__(self, spotify_song, log):
-                self.likely_false_negative = 0
-                self.best_matches = {
-                    "artists":0,
-                    "name":0,
-                    "duration_ms":0,
-                    "album":0,
-                    "track_number":0
-                }
-                self.best_song = None
-                self.spotify_song = self.clean_spotify_song(spotify_song)
-                self.log = log
-                
-
-            @staticmethod
-            def clean_spotify_song(spotify_song):
-                spotify_song["artists"] = song_matcher.string_cleaner(spotify_song["artists"])
-                spotify_song["name"] = song_matcher.string_cleaner(spotify_song["name"])
-                spotify_song["album"] = song_matcher.string_cleaner(spotify_song["album"])
-                return spotify_song
-
-            def matching_artists(self, song):
-                s = 0
-                for artist in self.spotify_song["artists"]: #TODO: Fix up  this shit like idk cmp func and reduce iteratively with reducing functions
-                    matched = False
-                    if artist in song["artists"]:
-                        s += 1
-                        continue
-
-                    keyboard_artist = self.remove_non_keyboard_chars(artist)
-                    for spot_artist in song["artists"]:
-                        if keyboard_artist  == self.remove_non_keyboard_chars(spot_artist):
-                            s += len(keyboard_artist)/len(artist)
-                            matched = True
-                            break
-                    if matched:
-                        continue
-
-                    for spliter in [" / ", " & "]: # iffy and if / and & in name possibility of double match
-                        for split_artist in artist.split(spliter):
-                            if split_artist in song["artists"]:
-                                self.log.log(f"Split Artist Matched: local \"{song['artists']}\", spotify \"{self.spotify_song['artists']}\" ")
-                                s += len(split_artist)/len(artist)
-                return s
-            
-            def duration_closeness(self, song):
-                seconds_plus_minus = 10
-                flatness = 0.5
-                s_to_ms = 1000
-                # No reason this cant be linear but have funny function now
-                distance = abs(int(song["duration_ms"])-int(self.spotify_song["duration_ms"]))
-                closeness = 1-(distance/(seconds_plus_minus*s_to_ms))**flatness
-                return max(closeness,0)
-
-            # Omits anything after a, " - ", "(", or "["
-            @staticmethod
-            def name_postfix_omitter(orig_name):
-                name = orig_name.split(" ")
-                word_starting_omitters = ["-", "(", "["]
-                for i in range(1,len(name)): # Don't ommit start eg, "(What's The Story) Morning Glory?"
-                    try:
-                        if name[i][0] in word_starting_omitters:
-                            return " ".join(name[:i])
-                    except IndexError:
-                        pass
-                return orig_name
-            
-            @staticmethod
-            def remove_non_keyboard_chars(str_in):
-                keyboard_chars = "`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>? "
-                str_out = ""
-                for char in str_in:
-                    if char in keyboard_chars:
-                        str_out += char
-                return str_out 
-
-            # Gets increasingly aggressive
-            @staticmethod
-            def prop_matches_a(str_a, str_b):
-                clean_a = song_matcher.string_cleaner(str_a) # should already be clean
-                clean_b = song_matcher.string_cleaner(str_b)
-                if clean_a == clean_b:
-                    return 1
-                
-                """keyboard_a = song_matcher.song_scorer.remove_non_keyboard_chars(str_a)
-                keyboard_b = song_matcher.song_scorer.remove_non_keyboard_chars(str_b)
-                if keyboard_a == keyboard_b:
-                    return len(keyboard_a)/len(clean_a)"""
-                
-                postfix_ommited_a = song_matcher.song_scorer.name_postfix_omitter(clean_a)
-                postfix_ommited_b = song_matcher.song_scorer.name_postfix_omitter(clean_b)
-
-                if postfix_ommited_a == postfix_ommited_b:
-                    return len(postfix_ommited_a)/len(clean_a)
-
-                return 0
-
-            def check_song(self, song):
-                # Set base
-                matched = {
-                    "artists":0,
-                    "name":0,
-                    "duration_ms":0,
-                    "album":0,
-                    "track_number":0
-                }
-
-                self.cur_song = song
-
-                matched["artists"] = self.matching_artists(song)
-                matched["duration_ms"] = self.duration_closeness(song)
-                matched["name"] = self.prop_matches_a(self.spotify_song["name"], song["name"])
-                matched["album"] = self.prop_matches_a(self.spotify_song["album"], song["album"])
-                matched["track_number"] = int(self.spotify_song["track_number"] == song["track_number"])
-
-                return matched
-            
-            def cmp_songs(self, songs):
-                for song in songs:
-                    self.cmp_song(song)
-                return self.best_song
-            
-            def not_mininmum_matched(self, match):
-                if match["artists"] == 0:
-                    if match["name"] != 0 and match["duration_ms"] != 0 and match["album"] != 0:
-                        self.log.log(f"Likely False Positive: Song (\"{self.spotify_song['name']}\") but No Spotify Artist \"{self.spotify_song['artists']}\" in {self.cur_song['artists']}")
-                        self.likely_false_negative += 1
-                    return True
-
-                if match["name"] == 0:
-                    return True
-                
-                return False
-            
-            def cmp_song(self, song):
-                song_matches = self.check_song(song)
-
-                """if song["name"] == "tea for the tillerman" and self.spotify_song["name"] == "tea for the tillerman":
-                    print(song_matches)
-                    self.log.log(f"SONG: {song}")
-                    self.log.log(f"SPOT: {self.spotify_song}")
-                    quit()"""
-
-                if self.not_mininmum_matched(song_matches):
-                    #self.log.log(f"NOT MIN: {song['name']} | {self.spotify_song['name']}")
-                    return
-
-                for field, match_value in song_matches.items():
-                    if match_value > self.best_matches[field]:
-                        self.best_matches = song_matches
-                        self.best_song = song
-                        return
-                    elif match_value < self.best_matches[field]:
-                        return
-
-    @staticmethod
-    def ensure_path_end_slash(path):
-        if path.endswith("\\"):
-            return path
-        return path+"\\"
-    
-    @staticmethod
-    def string_cleaner(inp):
-        # Probably will be used later to remove special chars
-        # Cant remember why ' was removed previously
-        out = inp
-        if type(inp) == list:
-            new_list = list()
-            for i in inp:
-                new_list.append(i.strip().lower()) #.replace("'", "")
-            out = new_list
-        elif type(inp) == str:
-            out = inp.strip().lower() #.replace("'", "")
-        
-        if out==None and inp!=None:
-            print("FUCKER")
-            quit()
-
-        return out
 
     @staticmethod
     def get_song_duration(mi, file_path):
@@ -265,12 +85,12 @@ class song_matcher:
             if tag == "artists":
                 for check_tag in self.tag_aliases[tag]:
                     try:
-                        data[tag] = self.string_cleaner(tags[check_tag])
+                        data[tag] = str_utils.clean_tag_data(tags[check_tag])
                         if type(data[tag]) == str:
                             data[tag] = data[tag].split(";") # Absolutely goofy but CBA to implement split at any rn
                             if len(data[tag]) == 1:
                                 data[tag] = data[tag][0].split(",")
-                            data[tag] = self.string_cleaner(data[tag])
+                            data[tag] = str_utils.clean_tag_data(data[tag])
                         written = True
                         break
                     except KeyError:
@@ -281,7 +101,7 @@ class song_matcher:
             
             for check_tag in self.tag_aliases[tag]:
                 try:
-                    data[tag] = self.string_cleaner(tags[check_tag])
+                    data[tag] = str_utils.clean_tag_data(tags[check_tag])
                     written = True
                     break
                 except KeyError:
@@ -322,7 +142,7 @@ class song_matcher:
 
     def match(self, song_spotify):
         #print(song_spotify["name"])
-        scorer = self.song_scorer(song_spotify, self.log)
+        scorer = song_scorer(song_spotify, self.log)
         best_match = scorer.cmp_songs(self.songs)
         self.likely_false_negative += scorer.likely_false_negative
         return best_match
@@ -390,6 +210,7 @@ class song_matcher:
         self.log.log(f"Playlists Saved: {playlists_saved}")
         self.log.log(f"Individual Song Matches: {num_matched} (Same songs in multiple playlists will count multiple times)")
         self.log.log(f"Likely False Negatives: {self.likely_false_negative} (Same songs in multiple playlists will count multiple times)")
+        
 if __name__ == "__main__":
     CONVERTED_ROOT_PATH = r"D:\Music_CONVERTED"
     TRANSFERED_ROOT_PATH = r"\storage\emulated\0\Music\Music_CONVERTED"
