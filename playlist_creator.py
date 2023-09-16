@@ -157,8 +157,8 @@ class song_matcher:
         self.get_song_data()
         if self.CACHE:
             self.cache_converted_songs()
-        
-    def run(self, tracks):
+
+    def load_track_info(self):
         if self.USE_CACHED_TRACKS: # TODO: Seems to not be working
             try:
                 with open("cache/all_converted_tracks.json", "r") as f:
@@ -169,9 +169,14 @@ class song_matcher:
                 self.song_method()
         else:
             self.song_method()
+        
+    def run(self, tracks):
+        self.load_track_info()
+        self.match_tracks_in_playlists(tracks)
 
-        num_matched = 0
-        playlists_saved = 0
+    def match_tracks_in_playlists(self, tracks):
+        self.num_matched = 0
+        self.playlists_saved = 0
         
         for playlist_name, spotify_songs in tracks.items():
             self.log.log(f"\n-- Finding Matches for playlist: \"{playlist_name}\"")
@@ -183,7 +188,7 @@ class song_matcher:
             for song in spotify_songs:
                 result = self.match(song)
                 if result:
-                    num_matched += 1
+                    self.num_matched += 1
                     num_matched_playlist += 1
                     
                     if not found:
@@ -201,14 +206,17 @@ class song_matcher:
                 if self.CONVERTED_ROOT_PATH != self.TRANSFERED_ROOT_PATH:
                     self.log.log(f"Writing playlist to \"{new_playlist_local.OUTPUT_DIR}{new_playlist_local.name}.m3u8\" ")
                     new_playlist_remote.write()
-                playlists_saved += 1
+                self.playlists_saved += 1
             else:
                 self.log.log(f"NOT SAVED: {num_matched_playlist} Matched < threshold {self.MIN_PLAYLIST_SONGS}")
+        
+        self.summary(len(tracks))
 
+    def summary(self, len_tracks):
         self.log.log("\n---- SUMMARY")
-        self.log.log(f"Playlists Checked: {len(tracks)}")
-        self.log.log(f"Playlists Saved: {playlists_saved}")
-        self.log.log(f"Individual Song Matches: {num_matched} (Same songs in multiple playlists will count multiple times)")
+        self.log.log(f"Playlists Checked: {len_tracks}")
+        self.log.log(f"Playlists Saved: {self.playlists_saved}")
+        self.log.log(f"Individual Song Matches: {self.num_matched} (Same songs in multiple playlists will count multiple times)")
         self.log.log(f"Likely False Negatives: {self.likely_false_negative} (Same songs in multiple playlists will count multiple times)")
         
 if __name__ == "__main__":
