@@ -90,7 +90,7 @@ class converter():
                 folder_existed=False
                 write_path = root.replace(self.path, self.write_path)
                 try:
-                    os.mkdir(write_path)
+                    os.makedirs(write_path)
                 except FileExistsError:
                     folder_existed=True
 
