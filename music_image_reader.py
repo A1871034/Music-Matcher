@@ -36,20 +36,26 @@ def read_image_from_music(file):
 
     return pic, pic_type
 
+def is_in_filetypes(string:str, types:list):
+    if string[string.rfind(".")+1:] in types:
+        return True
+    
+    return False
+
 def image_search(root, dirs, files, recursive_depth=0):
     cover = None
     status = -1 # -1 None, 0 Any Image, 1 Front
     for file in files:
-        if not (file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png")):
+        if not is_in_filetypes(file, ["jpg", "jpeg", "png"]):
             continue
-        if (file[:file.rfind(".")].lower().endswith("cover")):
+        if file[:file.rfind(".")].lower().endswith("cover"):
             return f"{root}\\{file}"
-        if (file[:file.rfind(".")].lower().endswith("front")):
-            if status < 1:
+        if file[:file.rfind(".")].lower().endswith("front") and status < 1:
                 cover = file
-        elif (file.endswith(".jpg") or file.endswith(".jpeg") or file.endswith(".png")):
-            if status < 0:
-                cover = file
+                status = 0
+        if status < 0:
+            cover = file
+            status = 0
 
     if recursive_depth > 0 or recursive_depth == -1:
         if recursive_depth == -1:
