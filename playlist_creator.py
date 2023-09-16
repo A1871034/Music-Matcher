@@ -170,15 +170,15 @@ class song_matcher:
         else:
             self.song_method()
         
-    def run(self, tracks):
+    def run(self, sp_tracks):
         self.load_track_info()
-        self.match_tracks_in_playlists(tracks)
+        self.match_tracks_in_playlists(sp_tracks)
 
-    def match_tracks_in_playlists(self, tracks):
+    def match_tracks_in_playlists(self, sp_tracks):
         self.num_matched = 0
         self.playlists_saved = 0
         
-        for playlist_name, spotify_songs in tracks.items():
+        for playlist_name, spotify_songs in sp_tracks.items():
             self.log.log(f"\n-- Finding Matches for playlist: \"{playlist_name}\"")
             found = False
             num_matched_playlist = 0
@@ -210,7 +210,7 @@ class song_matcher:
             else:
                 self.log.log(f"NOT SAVED: {num_matched_playlist} Matched < threshold {self.MIN_PLAYLIST_SONGS}")
         
-        self.summary(len(tracks))
+        self.summary(len(sp_tracks))
 
     def summary(self, len_tracks):
         self.log.log("\n---- SUMMARY")
