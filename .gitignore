@@ -6,3 +6,4 @@ playlists_local
 playlists_remote
 cache
 __pycache__
+tests
