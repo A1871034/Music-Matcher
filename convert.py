@@ -1,10 +1,11 @@
 from pydub import AudioSegment
-from pydub.utils import mediainfo
 import os
 import time
+import json
 
 from logger import logger
 import music_image_reader
+import tag_utils
 
 # TODO: Only use mutagen for media tags / info
 class converter():
@@ -16,6 +17,7 @@ class converter():
         self.overwrite=overwrite
         self.image_depth=image_depth
         self.log = log
+        self.CACHED_CONVERTED_FILE_PATH = "cache/all_converted_tracks.json"
         if not self.log:
             self.log = logger("converter_log.txt", True, False)
 
@@ -24,6 +26,17 @@ class converter():
 
         self.load_blacklist()
 
+    def load_converted_cache(self):
+        try:
+            with open(self.CACHED_CONVERTED_FILE_PATH, "r") as f:
+                self.cached_converted = json.load(f)
+        except FileNotFoundError:
+            self.cached_converted = {}
+
+    def cache_converted(self):
+        with open(self.CACHED_CONVERTED_FILE_PATH, "w") as f:
+            f.write(json.dumps(self.cached_converted,indent=2))
+
     def log_settings(self):
         self.log.log(f"""- Settings:\nMusic Folder: {self.path}\nOutput Folder: {self.write_path}\nExporting Bitrate: {self.bitrate}\nOverwrite Songs with > 0 bytes: {self.overwrite}\nMax album folder depth to find cover images: {self.image_depth}\n""")
 
@@ -31,7 +44,7 @@ class converter():
         if self.use_blacklist:
             with open("blacklist.txt", "r") as f:
                 self.blacklist = f.read().strip().split("\n")
-            self.log.log(f"Loaded blaclist of length, {len(self.blacklist)}, from blacklist.txt")
+            self.log.log(f"Loaded blaclist of length {len(self.blacklist)} from blacklist.txt")
         else:
             self.blacklist = []
 
@@ -41,7 +54,11 @@ class converter():
 
         self.create_converted_dir()
 
+        self.load_converted_cache()
+
         self.walk_convert()
+
+        self.cache_converted()
 
         self.end_time = time.time()
         self.log.log(f"Conversion Ended at time {self.end_time}")
@@ -109,10 +126,12 @@ class converter():
             # Gate already done songs
             if not self.overwrite and folder_existed:
                 try:
-                    if os.path.getsize(new_file) > 0:
-                        self.log.log(f"-- SKIPPED (Existing File ↵ > 0b)\n{new_file}") 
+                    if self.cached_converted[new_file]["modified_time"] == os.path.getmtime(new_file) and os.path.getsize(new_file) > 0:
+                        self.log.log(f"- Existing File: ↵ (> 0b) & (Base File Unmodified)\n{new_file}\n-- SKIPPED") 
                         continue
-                except OSError:
+                    else: # File exists but modified time !=
+                        self.log.log(f"-- Existing File: Base File Modified or Converted File 0b (CONTINUING)\n{new_file}")
+                except (OSError, KeyError):
                     pass               
         
             self.log.log(f"- Read: {file}")
@@ -126,8 +145,9 @@ class converter():
                 self.failed.append(file)
                 continue
 
+            # TODO: merge directly below into tag_utils
             # Check For Embeded Image
-            pic, pic_type = music_image_reader.read_image_from_music(file)
+            pic, pic_type = music_image_reader.read_image_from_music(tags_obj)
             if (pic and pic_type):
                 cover = f"{root}\\temp_cover{pic_type}"
                 self.log.log(f"- Embeded Cover Found -")
@@ -135,49 +155,39 @@ class converter():
                     f.write(pic)
             else:
                 self.log.log(f"- Using Cover: {cover}")
-            
+
             # Load Tags
-            try:
-                tags = mediainfo(file).get('TAG',None)
-            except:
-                tags = {}
+            tags_obj = tag_utils.tags(file)
 
-            # Clean tags
-            # Found issues in some songs of these tags being highly duplicated
-            for tag in ["GENRE", "COMPOSER", "ARTIST", "ARTISTS"]:
-                try:
-                    temp = tags[tag]
-                except KeyError:
-                    continue
-
-                temp = temp.split(";")
-                unique = list()
-                for i in temp:
-                    if i in unique:
-                        continue
-                    unique.append(i)
-
-                temp = ";".join(unique)
-                if tags[tag] != temp:
-                    self.log.log("-- TAGS CLEANED --")
-                    tags[tag] = temp
-
-            if tags:
+            if tags_obj.tags:
                 self.log.log("- Tags: ↵")
-                for key, val in tags.items():
-                    self.log.log(f"{key}: \"{val}\"")
+                for key, val in tags_obj.tags.items():
+                    display_str = val.replace("\n", "\\n")
+                    MAX_DISPLAY_LEN = 51
+                    display_str = val if len(val) <= MAX_DISPLAY_LEN else val[:MAX_DISPLAY_LEN-3]+"...+"+str(len(val)-MAX_DISPLAY_LEN)
+                    self.log.log(f"{key}: \"{display_str}\"") # Perhaps val will be an int one day :( wont worry about that now though
             else:
                 self.log.log("-- NO TAGS FOUND")
 
             # Will overwrite but haven't found any with it and its updating with a correct value anyway. so don't care
-            tags["duration_ms"] = len(s) # len(s) == duration in ms of s which is orig song
+            tags_obj.tags["duration_ms"] = len(s) # len(s) == duration in ms of s which is orig song
             
             # Try Exporting
             try:
-                s.export(new_file, format="mp3", bitrate=self.bitrate,tags=tags, cover=cover)
+                s.export(new_file, format="mp3", bitrate=self.bitrate,tags=tags_obj.tags, cover=cover)
+                failed = False
             except Exception as err:
                 self.log.log(f"------- FAILED EXPORTING FILE -------\n{err}\n-----------------------")
                 self.failed.append(file)
+                failed = True
+
+            if not failed: # 
+                tags_obj.clean_tags()
+                tags_obj.add_filepath_tag()
+                tags_obj.add_mdate_written()
+                #tags_obj.ensure_has_durationms(s) # Should be redundant
+                self.cached_converted[new_file] = tags_obj.tags
+
             if (pic and pic_type):
                 os.system(f"del \"{cover}\"")
         

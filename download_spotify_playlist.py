@@ -223,7 +223,7 @@ class formater():
                         "album":i["track"]["album"]["name"],
                         "artists":artists,
                         "duration_ms":i["track"]["duration_ms"],
-                        "track_number":i["track"]["track_number"],
+                        "tracknumber":i["track"]["track_number"],
                         "added_at":i["added_at"],
                         "added_at_epoch":datetime.strptime(i["added_at"], "%Y-%m-%dT%H:%M:%SZ").timestamp()
                         })

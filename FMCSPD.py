@@ -250,7 +250,7 @@ def FMCSPD():
                             OMMIT_ALBUMS_SONG_POSTFIXES=settings.OMMIT_ALBUMS_SONG_POSTFIXES,
                             log=log)
 
-        matcher.run(sp_tracks=sp_data.tracks)
+        matcher.run(sp_tracks=sp_data.tracks, track_info=c.cached_converted)
 
         log.log("\n\n-------------- SUCCESS ---------- SUCCESS ---------- SUCCESS --------------")
 

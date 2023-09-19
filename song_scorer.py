@@ -8,7 +8,7 @@ class song_scorer:
                 "name":0,
                 "duration_ms":0,
                 "album":0,
-                "track_number":0
+                "tracknumber":0
             }
             self.best_song = None
             self.spotify_song = self.clean_spotify_song(spotify_song)
@@ -106,7 +106,7 @@ class song_scorer:
                 "name":0,
                 "duration_ms":0,
                 "album":0,
-                "track_number":0
+                "tracknumber":0
             }
 
             self.cur_song = song
@@ -115,12 +115,12 @@ class song_scorer:
             matched["duration_ms"] = self.duration_closeness(song)
             matched["name"] = self.prop_matches_a(self.spotify_song["name"], song["name"])
             matched["album"] = self.prop_matches_a(self.spotify_song["album"], song["album"])
-            matched["track_number"] = int(self.spotify_song["track_number"] == song["track_number"])
+            matched["tracknumber"] = int(self.spotify_song["tracknumber"] == song["tracknumber"])
 
             return matched
         
         def cmp_songs(self, songs):
-            for song in songs:
+            for song in songs.values():
                 self.cmp_song(song)
             return self.best_song
         

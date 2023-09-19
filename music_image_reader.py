@@ -1,11 +1,12 @@
 import mimetypes
 from mutagen import flac, mp3
 import os
+import tag_utils
 
-def read_flac(file):
+def read_flac(tags:tag_utils.tags):
     pic = None
     pic_type = None
-    flac_file = flac.Open(file)
+    flac_file = tags.file_thing
     try:
         pic = flac_file.pictures[0]
         pic_type = mimetypes.guess_extension(pic.mime if type(pic.mime) == str else pic.mime[0]) #left for now change later
@@ -14,10 +15,10 @@ def read_flac(file):
         pass
     return pic, pic_type
 
-def read_mp3(file):
+def read_mp3(file_path:str):
     pic = None
     pic_type = None
-    pic = mp3.Open(file).tags # Can swap to mutagen.id3.ID3(file)? Not sure seems same but perhaps not though tags is of type mutagen.id3.ID3
+    pic = mp3.MP3(file_path).tags # Can swap to mutagen.id3.ID3(file)? Not sure seems same but perhaps not though tags is of type mutagen.id3.ID3
     if pic:
         for opt in pic.keys():
             if opt.startswith("APIC") or opt.startswith("PIC"):
@@ -28,11 +29,15 @@ def read_mp3(file):
             
     return pic, pic_type
 
-def read_image_from_music(file):
-    if file.endswith(".flac"):
-        pic, pic_type = read_flac(file)
-    elif file.endswith(".mp3"):
-        pic, pic_type = read_mp3(file)
+def read_image_from_music(tags:tag_utils.tags):
+    if tags.file_type == "FLAC":
+        pic, pic_type = read_flac(tags)
+    elif tags.file_type == "MP3":
+        # as must use MP3 and not EasyMP3 must reopen
+        # not a big issue as most of my files are flac
+        # TODO: Use ID3 / mp3.MP3 instead of EasyID3 / mp3.EasyMP3
+        pic, pic_type = read_mp3(tags.file_path) 
+        
 
     return pic, pic_type
 

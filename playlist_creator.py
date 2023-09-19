@@ -1,10 +1,9 @@
 import json
 import os
-from pydub.utils import mediainfo
-from pydub import AudioSegment
 from logger import logger
 from string_utils import str_utils
 from song_scorer import song_scorer
+from tag_utils import tags
 
 class playlist:
     def __init__(self, name, OUTPUT_DIR, ):
@@ -44,25 +43,7 @@ class song_matcher:
 
         self.log_settings()
 
-        self.tag_aliases = { # ordered by precedence descending
-                "artists": ["artists", "artist", "artist_name", "album_artist"],
-                "name": ["name", "title", "track_name"],
-                "duration_ms": ["duration_ms", "durationms"], # So far have never matched this so sorta pointless
-                "album": ["album", "album_name"],
-                "track_number": ["track_number", "track"]
-            }
-        for key, val in self.tag_aliases.items(): # add UPPERCASE
-            with_upper = list()
-            for i in val:
-                with_upper.append(i)
-                with_upper.append(i.upper())
-            self.tag_aliases[key] = with_upper
-
         self.formats = ["mp3", "flac"]
-
-    @staticmethod
-    def get_song_duration(mi, file_path):
-        return len(AudioSegment.from_file(file_path))
     
     def log_settings(self):
         self.log.log("\n---- Song Matcher Settings")
@@ -74,47 +55,15 @@ class song_matcher:
         self.log.log(f"CACHE: {self.CACHE}")
 
     def read_song_data(self, file_path):
+        #TODO: This function and other relevant should be changed to better work with wfiles not converted
         self.log.log(file_path)
-        mi = mediainfo(file_path)
-        tags = mi.get('TAG',None)
-        data = {
-            "file_path": file_path
-        }
-        for tag in self.tag_aliases.keys():
-            written = False
-            if tag == "artists":
-                for check_tag in self.tag_aliases[tag]:
-                    try:
-                        data[tag] = str_utils.clean_tag_data(tags[check_tag])
-                        if type(data[tag]) == str:
-                            data[tag] = data[tag].split(";") # Absolutely goofy but CBA to implement split at any rn
-                            if len(data[tag]) == 1:
-                                data[tag] = data[tag][0].split(",")
-                            data[tag] = str_utils.clean_tag_data(data[tag])
-                        written = True
-                        break
-                    except KeyError:
-                        pass
-                if not written:
-                    data[tag] = list()
-                continue
+        cur_tags = tags(file_path)
+        cur_tags.clean_tags()
+        cur_tags.add_filepath_tag()      
+        #cur_tags.add_mdate_written() # Only used by converter
+        cur_tags.ensure_has_durationms()
             
-            for check_tag in self.tag_aliases[tag]:
-                try:
-                    data[tag] = str_utils.clean_tag_data(tags[check_tag])
-                    written = True
-                    break
-                except KeyError:
-                    pass
-            if not written:
-                if tag == "name":
-                    self.log.log(f"FUCKER: {file_path}")
-                data[tag] = None
-                
-        if data["duration_ms"] == None:
-            data["duration_ms"] = self.get_song_duration(file_path)
-            
-        return data
+        return cur_tags.tags
 
     def is_song(self, file_path):
         for f in self.formats:
@@ -129,16 +78,16 @@ class song_matcher:
 
     def get_all_converted(self):
         self.log.log("-- Getting Song Library")
-        self.songs = list()
+        self.songs = {}
         for root, dirs, files in os.walk(self.CONVERTED_ROOT_PATH):
             for file in files:
                 if self.is_song(file):
-                    self.songs.append(root+"\\"+file)
+                    self.songs[root+"\\"+file] = {}
 
     def get_song_data(self):
         self.log.log("-- Getting Songs' Data")
-        for i in range(len(self.songs)):
-            self.songs[i] = self.read_song_data(self.songs[i])
+        for file_path in self.songs.keys():
+            self.songs[file_path] = self.read_song_data(file_path)
 
     def match(self, song_spotify):
         #print(song_spotify["name"])
@@ -158,20 +107,23 @@ class song_matcher:
         if self.CACHE:
             self.cache_converted_songs()
 
-    def load_track_info(self):
-        if self.USE_CACHED_TRACKS: # TODO: Seems to not be working
-            try:
-                with open("cache/all_converted_tracks.json", "r") as f:
-                    self.songs = json.loads(f.read())
-                self.log.log("-- Using cached converted tracks")
-            except (FileNotFoundError, json.decoder.JSONDecodeError):
-                self.log.log("-- Cached Converted Tracks file invalid or non-existent")
+    def load_track_info(self, track_info=None): # sets self.songs
+        if track_info == None:
+            if self.USE_CACHED_TRACKS:
+                try:
+                    with open("cache/all_converted_tracks.json", "r") as f:
+                        self.songs = json.loads(f.read())
+                    self.log.log("-- Using cached converted tracks")
+                except (FileNotFoundError, json.decoder.JSONDecodeError):
+                    self.log.log("-- Cached Converted Tracks file invalid or non-existent")
+                    self.song_method()
+            else:
                 self.song_method()
         else:
-            self.song_method()
+            self.songs = track_info
         
-    def run(self, sp_tracks):
-        self.load_track_info()
+    def run(self, sp_tracks, track_info=None):
+        self.load_track_info(track_info)
         self.match_tracks_in_playlists(sp_tracks)
 
     def match_tracks_in_playlists(self, sp_tracks):
@@ -225,9 +177,9 @@ if __name__ == "__main__":
     OUTPUT_DIR = r"C:\Users\Xander\Documents\Coding\Flac to Mp3"
     USE_CACHED_TRACKS = False
     matcher = song_matcher(CONVERTED_ROOT_PATH, TRANSFERED_ROOT_PATH, OUTPUT_DIR, USE_CACHED_TRACKS=USE_CACHED_TRACKS)
-    with open("cache/tracks.json", "r") as f:
-        tracks = json.loads(f.read())
-    matcher.run(tracks)
+    with open("cache/sp_tracks.json", "r") as f:
+        sp_tracks = json.loads(f.read())
+    matcher.run(sp_tracks=sp_tracks)
 
     
 
