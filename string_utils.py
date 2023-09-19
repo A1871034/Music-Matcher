@@ -10,7 +10,7 @@ class str_utils:
                     continue
                 new_list.append(i.strip().lower()) #.replace("'", "")
             out = new_list
-        elif type(inp) is str:
+        elif type(inp) == str:
             out = inp.strip().lower() #.replace("'", "")
         
         if out is None and inp is not None:
