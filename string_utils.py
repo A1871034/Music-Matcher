@@ -1,11 +1,13 @@
 class str_utils:
-    def clean_tag_data(inp:str):
+    def clean_tag_data(inp):
         # Probably will be used later to remove special chars
         # Cant remember why ' was removed previously
         out = inp
         if type(inp) == list:
             new_list = list()
             for i in inp:
+                if type(i) != str:
+                    continue
                 new_list.append(i.strip().lower()) #.replace("'", "")
             out = new_list
         elif type(inp) == str:
