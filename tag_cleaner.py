@@ -13,7 +13,7 @@ def clean(tags):
         except KeyError:
             continue
 
-        unique = list()
+        unique = []
         for i in temp:
             if i in unique:
                 continue
@@ -27,7 +27,7 @@ def traverse(path, overwrite=False):
     print(f"----- Current Path: {path}")
     directories = os.popen(f"dir /B /AD {path}").read().rstrip()
     if (directories == "File Not Found"):
-        directories = list()
+        directories = []
     else:
         directories = directories.split("\n")
 
@@ -38,12 +38,12 @@ def traverse(path, overwrite=False):
     # Read songs
     songs = os.popen(f"dir /B /A-D-S-H {path}").read().rstrip()
     if (songs == "File Not Found"):
-        songs = list()
+        songs = []
     else:
         songs = songs.split("\n")
 
     # Clean for flac/mp3
-    new_songs = list()
+    new_songs = []
     for song in songs:
         if song.endswith(".mp3") or song.endswith(".flac"):
             new_songs.append(song)

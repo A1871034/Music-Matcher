@@ -1,5 +1,6 @@
 import json
 import os
+
 from logger import logger
 from string_utils import str_utils
 from song_scorer import song_scorer
@@ -108,7 +109,7 @@ class song_matcher:
             self.cache_converted_songs()
 
     def load_track_info(self, track_info=None): # sets self.songs
-        if track_info == None:
+        if track_info is None:
             if self.USE_CACHED_TRACKS:
                 try:
                     with open("cache/all_converted_tracks.json", "r") as f:

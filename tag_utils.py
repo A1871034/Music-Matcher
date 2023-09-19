@@ -1,7 +1,8 @@
 from mutagen import mp3, flac
-from string_utils import str_utils
 from pydub import AudioSegment
 from os.path import getmtime
+
+from string_utils import str_utils
 
 def get_song_duration(file_path):
     return len(AudioSegment.from_file(file_path))
@@ -15,7 +16,7 @@ class tags:
             "tracknumber": ["track_number", "track", "tracknumber"]
         }
     for key, val in tag_aliases.items(): # add UPPERCASE
-        with_upper = list()
+        with_upper = []
         for i in val:
             with_upper.append(i)
             with_upper.append(i.upper())
@@ -72,7 +73,7 @@ class tags:
                     except KeyError:
                         pass
                 if not written:
-                    data["artists"] = list()
+                    data["artists"] = []
                 continue
             
             for check_tag in self.tag_aliases[tag]:
@@ -87,11 +88,11 @@ class tags:
         self.tags = data
     
     def ensure_has_durationms(self, audio_segment:AudioSegment=None):
-        if audio_segment != None:
+        if audio_segment is not None:
             self.tags["duration_ms"] = len(audio_segment)
 
         try:
-            if self.tags["duration_ms"] != None:
+            if self.tags["duration_ms"] is not None:
                 return
         except KeyError:
             pass
@@ -102,7 +103,7 @@ class tags:
         self.tags["file_path"] = self.file_path
 
     def add_mdate_written(self, file_path=None):
-        if file_path == None:
+        if file_path is None:
             file_path = self.file_path
         
         self.tags["modified_time"] = getmtime(file_path)

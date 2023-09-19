@@ -1,7 +1,7 @@
 import sys
 import getopt
-from os import getcwd
 import traceback
+from os import getcwd
 
 from convert import converter
 from logger import logger
@@ -262,3 +262,4 @@ def FMCSPD():
 
 if __name__ == "__main__":
     FMCSPD()
+    

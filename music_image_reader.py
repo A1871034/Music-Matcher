@@ -1,6 +1,7 @@
 import mimetypes
-from mutagen import flac, mp3
 import os
+from mutagen import mp3
+
 import tag_utils
 
 def read_flac(tags:tag_utils.tags):

@@ -1,13 +1,13 @@
 import requests
 import json
 import time
-from datetime import datetime
 import webbrowser
 import random
 import string
 import socket
-from base64 import b64encode
 import json
+from datetime import datetime
+from base64 import b64encode
 
 from logger import logger
 
@@ -175,7 +175,7 @@ class filterer():
                 collaborative = cur_data["collaborative"]
             if cur_data["tracks_total"] < self.MIN_SONGS:
                 remove = True
-            elif (not OWNED_BY_USER == None) and cur_data["owner_uri"] != OWNED_BY_USER and not collaborative:
+            elif (OWNED_BY_USER is not None) and cur_data["owner_uri"] != OWNED_BY_USER and not collaborative:
                 remove = True
             elif collaborative and not self.INCLUDE_COLLABORATIVE:
                 remove = True
@@ -195,7 +195,7 @@ class formater():
         if data["total"] <= 0:
             return None
         
-        formated = list()
+        formated = []
         for i in data["items"]:
             temp_obj = {"href":i["href"],
                         "name":i["name"].replace("\\", " ").replace("/"," "),
@@ -214,9 +214,9 @@ class formater():
         return formated
 
     def format_tracks(data):
-        new = list()
+        new = []
         for i in data:
-            artists=list()
+            artists = []
             for artist in i["track"]["artists"]:
                 artists.append(artist["name"])
             new.append({"name":i["track"]["name"],
@@ -233,8 +233,8 @@ class spotify_data():
     def __init__(self, spotify_object, filt, log=None):
         self.spotify = spotify_object
         self.filter = filt
-        self.playlists = list()
-        self.tracks = list()
+        self.playlists = []
+        self.tracks = []
         self.requesting_user = None
         self.log = log
         if not self.log:
@@ -293,7 +293,7 @@ class spotify_data():
     def __get_playlists(self, CACHE_RESULTS=True):
         self.log.log("\n-- Getting Playlists")
         nxt = "https://api.spotify.com/v1/me/playlists?limit=50"
-        results = list()
+        results = []
         num_found = 0
         while nxt:
             playlists = self.spotify.spotify_get(nxt)
@@ -324,11 +324,11 @@ class spotify_data():
         filtered_playlists.append({"name": "Liked Songs",
                                    'tracks_href': "https://api.spotify.com/v1/me/tracks"})
 
-        tracks = dict()
+        tracks = {}
         for playlist in filtered_playlists:
             self.log.log(f"\n- Requesting Tracks from Playlist: \"{playlist['name']}\"")
             response = self.spotify.spotify_get(f"{playlist['tracks_href']}?limit=50&fields=next,items(added_at,track(name,album(name,genres),artists(name,genres),duration_ms,track_number))")
-            cur_tracks = list()
+            cur_tracks = []
             cur_tracks.extend(response["items"])
             while response["next"]:
                 response = self.spotify.spotify_get(f"{response['next']}&fields=next,items(added_at,track(name,album(name,genres),artists(name,genres),duration_ms,track_number))")

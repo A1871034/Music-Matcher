@@ -1,8 +1,8 @@
 import os
-from mutagen import flac, mp3, easyid3
 import mimetypes
 import sys
 import getopt
+from mutagen import flac, mp3, easyid3
 
 # TODO: Rewrite all of this
 

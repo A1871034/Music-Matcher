@@ -1,7 +1,7 @@
-from pydub import AudioSegment
 import os
 import time
 import json
+from pydub import AudioSegment
 
 from logger import logger
 import music_image_reader
@@ -78,7 +78,7 @@ class converter():
 
     def walk_convert(self):
         # Walk Directories
-        self.failed = list()
+        self.failed = []
         self.log.log("--------------- WALKING & CONVERTING ---------------")
         for root, dirs, files in os.walk(self.path):
             self.log.log(f"\n---------------------\n----- Current Path: \"{root}\"")
@@ -89,7 +89,7 @@ class converter():
 
             # Clean for flac/mp3
             # TODO: with more file types should be made more dynamic
-            new_songs = list()
+            new_songs = []
             for file in files:
                 if file.endswith(".mp3") or file.endswith(".flac"):
                     new_songs.append(file)

@@ -4,16 +4,16 @@ class str_utils:
         # Cant remember why ' was removed previously
         out = inp
         if type(inp) == list:
-            new_list = list()
+            new_list = []
             for i in inp:
                 if type(i) != str:
                     continue
                 new_list.append(i.strip().lower()) #.replace("'", "")
             out = new_list
-        elif type(inp) == str:
+        elif type(inp) is str:
             out = inp.strip().lower() #.replace("'", "")
         
-        if out==None and inp!=None:
+        if out is None and inp is not None:
             print("FUCKER")
             quit()
 
