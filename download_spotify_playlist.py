@@ -254,12 +254,12 @@ class spotify_data():
         self.log.log(f"\n-- Checking Caches with status: {cache_status}")
         
         if cache_status == 1:
-            data = self.chech_cache("cache/tracks.json")
+            data = self.chech_cache("cache/sp_tracks.json")
             if data == -1:
-                self.log.log("cache/tracks.json invalid or non-existent")
+                self.log.log("cache/sp_tracks.json invalid or non-existent")
                 cache_status = 0
             else:
-                self.log.log("cache/tracks.json loaded")
+                self.log.log("cache/sp_tracks.json loaded")
                 self.tracks = data
         
         if cache_status == 0:
@@ -342,7 +342,7 @@ class spotify_data():
 
         if CACHE_RESULTS:
             self.log.log(f"\n- Caching Tracks")
-            with open("cache/tracks.json", "w") as f:
+            with open("cache/sp_tracks.json", "w") as f:
                 f.write(json.dumps(tracks, indent=2))
 
         return tracks
