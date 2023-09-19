@@ -2,6 +2,7 @@
 import os
 from mutagen import flac
 
+# TODO: Depreciate this shit
 
 def clean(tags):
     # Clean tags
