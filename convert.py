@@ -56,9 +56,12 @@ class converter():
 
         self.load_converted_cache()
 
-        self.walk_convert()
-
-        self.cache_converted()
+        try:
+            self.walk_convert()
+            self.cache_converted()
+        except (Exception, KeyboardInterrupt) as err:
+            self.cache_converted()
+            raise err
 
         self.end_time = time.time()
         self.log.log(f"Conversion Ended at time {self.end_time}")
@@ -126,7 +129,7 @@ class converter():
             # Gate already done songs
             if not self.overwrite and folder_existed:
                 try:
-                    if self.cached_converted[new_file]["modified_time"] == os.path.getmtime(new_file) and os.path.getsize(new_file) > 0:
+                    if self.cached_converted[new_file]["modified_time"] == os.path.getmtime(file) and os.path.getsize(new_file) > 0:
                         self.log.log(f"- Existing File: ↵ (> 0b) & (Base File Unmodified)\n{new_file}\n-- SKIPPED") 
                         continue
                     else: # File exists but modified time !=
@@ -145,6 +148,9 @@ class converter():
                 self.failed.append(file)
                 continue
 
+            # Load Tags
+            tags_obj = tag_utils.tags(file)
+
             # TODO: merge directly below into tag_utils
             # Check For Embeded Image
             pic, pic_type = music_image_reader.read_image_from_music(tags_obj)
@@ -155,9 +161,6 @@ class converter():
                     f.write(pic)
             else:
                 self.log.log(f"- Using Cover: {cover}")
-
-            # Load Tags
-            tags_obj = tag_utils.tags(file)
 
             if tags_obj.tags:
                 self.log.log("- Tags: ↵")
