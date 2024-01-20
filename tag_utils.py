@@ -99,8 +99,11 @@ class tags:
 
         self.tags["duration_ms"] = get_song_duration(self.file_path)
 
-    def add_filepath_tag(self):
-        self.tags["file_path"] = self.file_path
+    def add_filepath_tag(self, file_path=None):
+        if file_path == None:
+            self.tags["file_path"] = self.file_path
+        else:
+            self.tags["file_path"] = file_path
 
     def add_mdate_written(self, file_path=None):
         if file_path is None:

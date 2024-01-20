@@ -1,6 +1,7 @@
 import os
 import time
 import json
+from concurrent.futures import ThreadPoolExecutor
 from pydub import AudioSegment
 
 from logger import logger
@@ -9,13 +10,14 @@ import tag_utils
 
 # TODO: Only use mutagen for media tags / info
 class converter():
-    def __init__(self, path, write_path="", blacklist=False, bitrate="192k", overwrite=False, image_depth=-1, log = None):
+    def __init__(self, path, write_path="", blacklist=False, bitrate="192k", overwrite=False, image_depth=-1, THREADS = None, log = None):
         self.path = path
         self.write_path = write_path
         self.use_blacklist = blacklist
         self.bitrate=bitrate
         self.overwrite=overwrite
         self.image_depth=image_depth
+        self.THREADS = THREADS
         self.log = log
         self.CACHED_CONVERTED_FILE_PATH = "cache/all_converted_tracks.json"
         if not self.log:
@@ -76,7 +78,19 @@ class converter():
             for i in self.failed:
                 self.log.log(i)
 
+    # Writes useful exception info under files and esnures all log futures are closed
+    def convert_callback(self, future):
+        excep = future.exception()
+        if excep is not None:
+            self.failed.append(self.futures_data[future]["file_path"])
+            self.log.submit_future(self.futures_data[future]["id"], "------- FAILED WITH BELOW EXCEPTION -------\n"+str(excep)+"\n")
+        
+        del self.futures_data[future]
+
     def walk_convert(self):
+        executor = ThreadPoolExecutor(self.THREADS)
+        self.futures_data = {}
+
         # Walk Directories
         self.failed = []
         self.log.log("--------------- WALKING & CONVERTING ---------------")
@@ -115,10 +129,21 @@ class converter():
                     folder_existed=True
 
             # Convert Songs
-            self.convert_songs(new_songs, root, write_path, cover, folder_existed)
+            self.convert_songs(new_songs, root, write_path, cover, folder_existed, executor=executor)
+        
+        executor.shutdown()
+        self.log.merge_stream()
+        # Handy For Debugging
+        """print(sum([1 if type(i) is int else 0 for i in self.log.stream]))
+        print(self.log.get_calls)
+        print(self.log.submit_calls)
+        quit()"""
         self.log.log("--------------- DONE WALKING & CONVERTING ---------------")
 
-    def convert_songs(self, songs, root, write_path, cover=None, folder_existed=False):
+    def convert_songs(self, songs, root, write_path, cover=None, folder_existed=False, executor=None):
+        if executor is None:
+            executor = ThreadPoolExecutor(self.THREADS)
+        
         # Convert songs
         for song in songs:
             file = f'{root}\\{song}'
@@ -136,64 +161,89 @@ class converter():
                         self.log.log(f"-- Existing File: Base File Modified or Converted File 0b (CONTINUING)\n{new_file}")
                 except (OSError, KeyError):
                     pass               
-        
-            self.log.log(f"- Read: {file}")
-            self.log.log(f"- Write: {new_file}")
-
-            # Load File
-            try:
-                s = AudioSegment.from_file(file, format=song[song.rfind(".")+1:])
-            except Exception as err:
-                self.log.log(f"------- FAILED LOADING FILE -------\n{err}\n-----------------------")
-                self.failed.append(file)
-                continue
-
-            # Load Tags
-            tags_obj = tag_utils.tags(file)
-
-            # TODO: merge directly below into tag_utils
-            # Check For Embeded Image
-            pic, pic_type = music_image_reader.read_image_from_music(tags_obj)
-            if (pic and pic_type):
-                cover = f"{root}\\temp_cover{pic_type}"
-                self.log.log(f"- Embeded Cover Found -")
-                with open(cover, "wb") as f:
-                    f.write(pic)
-            else:
-                self.log.log(f"- Using Cover: {cover}")
-
-            if tags_obj.tags:
-                self.log.log("- Tags: ↵")
-                for key, val in tags_obj.tags.items():
-                    display_str = val.replace("\n", "\\n")
-                    MAX_DISPLAY_LEN = 51
-                    display_str = val if len(val) <= MAX_DISPLAY_LEN else val[:MAX_DISPLAY_LEN-3]+"...+"+str(len(val)-MAX_DISPLAY_LEN)
-                    self.log.log(f"{key}: \"{display_str}\"") # Perhaps val will be an int one day :( wont worry about that now though
-            else:
-                self.log.log("-- NO TAGS FOUND")
-
-            # Will overwrite but haven't found any with it and its updating with a correct value anyway. so don't care
-            tags_obj.tags["duration_ms"] = len(s) # len(s) == duration in ms of s which is orig song
             
-            # Try Exporting
-            try:
-                s.export(new_file, format="mp3", bitrate=self.bitrate,tags=tags_obj.tags, cover=cover)
-                failed = False
-            except Exception as err:
-                self.log.log(f"------- FAILED EXPORTING FILE -------\n{err}\n-----------------------")
-                self.failed.append(file)
-                failed = True
-
-            if not failed: # 
-                tags_obj.clean_tags()
-                tags_obj.add_filepath_tag()
-                tags_obj.add_mdate_written()
-                #tags_obj.ensure_has_durationms(s) # Should be redundant
-                self.cached_converted[new_file] = tags_obj.tags
-
-            if (pic and pic_type):
-                os.system(f"del \"{cover}\"")
+            self.log.log("-- Submitted to Executor")
+            future_id = self.log.get_future()
+            future = executor.submit(self.convert_song, file, new_file, cover, future_id)
+            self.futures_data[future] = {"id": future_id, "file_path": file}
+            future.add_done_callback(self.convert_callback)
         
+
+    def convert_song(self, file_path, export_file_path, cover, future_id = None):
+        print(future_id)
+        if future_id:
+            print("yes")
+        last_slash = file_path.rfind("\\")
+        root = file_path[:last_slash]
+        file = file_path[last_slash+1:]
+
+        output = "\n --- Convert Song\n"
+        output += f"- Read: {file_path}\n"
+        output += f"- Write: {export_file_path}\n"
+
+        # Load File
+        try:
+            s = AudioSegment.from_file(file_path, format=file_path[file_path.rfind(".")+1:])
+        except Exception as err:
+            output += f"------- FAILED LOADING FILE -------\n{err}\n-----------------------\n"
+            self.failed.append(file_path)
+            if future_id: # Should be provided when called asynchronously
+                self.log.submit_future(future_id, output)
+            else:
+                self.log.log(output)
+            return
+
+        # Load Tags
+        tags_obj = tag_utils.tags(file_path)
+
+        # TODO: merge directly below into tag_utils
+        # Check For Embeded Image
+        pic, pic_type = music_image_reader.read_image_from_music(tags_obj)
+        if (pic and pic_type):
+            cover = f"{root}\\TEMP_COVER - {file}{pic_type}"
+            output += f"- Embeded Cover Found -\n"
+            with open(cover, "wb") as f:
+                f.write(pic)
+        else:
+            output += f"- Using Cover: {cover}\n"
+
+        if tags_obj.tags:
+            output += "- Tags: ↵\n"
+            for key, val in tags_obj.tags.items():
+                display_str = val.replace("\n", "\\n")
+                MAX_DISPLAY_LEN = 51
+                display_str = val if len(val) <= MAX_DISPLAY_LEN else val[:MAX_DISPLAY_LEN-3]+"...+"+str(len(val)-MAX_DISPLAY_LEN)
+                output += f"{key}: \"{display_str}\"\n" # Perhaps val will be an int one day :( wont worry about that now though
+        else:
+            output += "-- NO TAGS FOUND\n"
+
+        # Will overwrite but haven't found any with it and its updating with a correct value anyway. so don't care
+        tags_obj.tags["duration_ms"] = len(s) # len(s) == duration in ms of s which is orig song
+        
+        # Try Exporting
+        try:
+            s.export(export_file_path, format="mp3", bitrate=self.bitrate,tags=tags_obj.tags, cover=cover)
+            failed = False
+        except Exception as err:
+            output += f"------- FAILED EXPORTING FILE -------\n{err}\n-----------------------\n"
+            self.failed.append(file_path)
+            failed = True
+
+        if not failed: # 
+            tags_obj.clean_tags()
+            tags_obj.add_filepath_tag(export_file_path)
+            tags_obj.add_mdate_written()
+            #tags_obj.ensure_has_durationms(s) # Should be redundant
+            self.cached_converted[export_file_path] = tags_obj.tags
+
+        if (pic and pic_type):
+            os.system(f"del \"{cover}\"")
+
+        if future_id: # Should be provided when called asynchronously
+            self.log.submit_future(future_id, output)
+        else:
+            self.log.log(output)
+
     def create_converted_dir(self):
         if not self.write_path:
             self.write_path = self.path+"_CONVERTED"

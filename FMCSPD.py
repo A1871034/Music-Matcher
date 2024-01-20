@@ -24,6 +24,8 @@ from playlist_creator import song_matcher
 #                          0 = No below folders, 
 #                         >0 = That number of folders lower than file 
 #                         DEFAULT: -1
+# --threads <# of threads>: desired number of threads to convert songs with, roughly correlates to # of ffmpeg processes
+#                         DEFAULT: min(32, os.cpu_count() + 4)
 #
 # SPOTIFY
 # --redirect-uri <url> : URL to redirect handler. use {PORT} for port and it will be replaced by the set port
@@ -72,6 +74,7 @@ class parser():
                                 "bitrate=",
                                 "overwrite-music",
                                 "use-blacklist",
+                                "threads=",
                                 "image-depth=",
                                 "redirect-uri=",
                                 "port=",
@@ -122,6 +125,8 @@ class parser():
                 self.OVERWRITE = True
             elif o == "--image-depth":
                 self.IMAGE_DEPTH = int(a)
+            elif o == "--threads":
+                self.THREADS = int(a)
 
             # SPOTIFY
             elif o == "--redirect-uri":
@@ -171,6 +176,7 @@ class parser():
         self.BITRATE = "192k"
         self.OVERWRITE = False
         self.IMAGE_DEPTH = -1
+        self.THREADS = None
 
         # SPOTIFY DATA
         self.REDIRECT_URI = "http://localhost:{PORT}/callback"
@@ -220,6 +226,7 @@ def FMCSPD():
                     bitrate=settings.BITRATE,
                     overwrite=settings.OVERWRITE,
                     image_depth=settings.IMAGE_DEPTH,
+                    THREADS=settings.THREADS,
                     log=log)
         c.convert()
 

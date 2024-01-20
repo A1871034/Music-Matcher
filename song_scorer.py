@@ -115,7 +115,7 @@ class song_scorer:
         matched["duration_ms"] = self.duration_closeness(song)
         matched["name"] = self.prop_matches_a(self.spotify_song["name"], song["name"])
         matched["album"] = self.prop_matches_a(self.spotify_song["album"], song["album"])
-        matched["tracknumber"] = int(self.spotify_song["track_number"] == song["tracknumber"])
+        matched["tracknumber"] = int(self.spotify_song["tracknumber"] == song["tracknumber"])
 
         return matched
     

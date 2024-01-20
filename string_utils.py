@@ -8,10 +8,10 @@ class str_utils:
             for i in inp:
                 if type(i) != str:
                     continue
-                new_list.append(i.strip().lower()) #.replace("'", "")
+                new_list.append(str_utils.__stripper(i)) #
             out = new_list
         elif type(inp) == str:
-            out = inp.strip().lower() #.replace("'", "")
+            out = str_utils.__stripper(inp) #
         
         if out is None and inp is not None:
             print("FUCKER")
@@ -23,3 +23,6 @@ class str_utils:
         if path.endswith("\\"):
             return path
         return path+"\\"
+    
+    def __stripper(s: str): # Fix this shit
+        return s.strip().lower().replace("'", "").replace("\u2019", "").replace(",", "").replace("&","+")
