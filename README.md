@@ -1,5 +1,4 @@
-# FMCSPD
-Folder Music Compressor and Spotify Playlists Download
+# Music Matcher
 
 Overwrite Output Music for android
 py FMCSPD.py -v -l --bitrate 128k -o -b -c --min-playlist-songs 5 --owned-by-user -1 -p --playlist-path-location "\storage\emulated\0\Music\Music_CONVERTED" "D:\Music"
