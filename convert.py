@@ -170,9 +170,6 @@ class converter():
         
 
     def convert_song(self, file_path, export_file_path, cover, future_id = None):
-        print(future_id)
-        if future_id:
-            print("yes")
         last_slash = file_path.rfind("\\")
         root = file_path[:last_slash]
         file = file_path[last_slash+1:]
@@ -198,13 +195,17 @@ class converter():
 
         # TODO: merge directly below into tag_utils
         # Check For Embeded Image
-        pic, pic_type = music_image_reader.read_image_from_music(tags_obj)
-        if (pic and pic_type):
-            cover = f"{root}\\TEMP_COVER - {file}{pic_type}"
-            output += f"- Embeded Cover Found -\n"
-            with open(cover, "wb") as f:
-                f.write(pic)
+        if cover is None:
+            pic, pic_type = music_image_reader.read_image_from_music(tags_obj)
+            if (pic and pic_type):
+                cover = f"{root}\\TEMP_COVER - {file}{pic_type}"
+                output += f"- Embeded Cover Found -\n"
+                with open(cover, "wb") as f:
+                    f.write(pic)
+            else:
+                output += f"- No Cover Found\n"
         else:
+            pic, pic_type = (None, None)
             output += f"- Using Cover: {cover}\n"
 
         if tags_obj.tags:

@@ -24,13 +24,13 @@ class logger():
         if self.logging:
             self.log_file = open(log_file, "w", encoding="u16")
 
-    def log(self, out):
+    def log(self, out, force_print=False):
         if self.logging:
             if type(self.stream) is str:
                 self.stream += out+"\n"
             else:
                 self.stream.append(out+"\n")
-        if not self.mute:
+        if not self.mute or force_print:
             print(out)
 
         self.check_len_write_stream()

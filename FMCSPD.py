@@ -219,7 +219,7 @@ def FMCSPD():
                     mute=settings.MUTE)
         
         # CONVERT
-        log.log("\n\n---------------------- CONVERSION STAGE")
+        log.log("\n\n---------------------- CONVERSION STAGE", True)
         c = converter(path=settings.MUSIC_DIR, 
                     write_path=settings.CONVERTED_ROOT_PATH,
                     blacklist=settings.USE_BLACKLIST,
@@ -231,7 +231,7 @@ def FMCSPD():
         c.convert()
 
         # SPOTIFY
-        log.log("\n\n---------------------- SPOTIFY STAGE")
+        log.log("\n\n---------------------- SPOTIFY STAGE", True)
         sp = spotify(CLIENT_SECRET=settings.SECRET,
                     CLIENT_ID=settings.CLIENT_ID,
                     REDIRECT_URI=settings.REDIRECT_URI,
@@ -246,7 +246,7 @@ def FMCSPD():
         sp_data = spotify_data(spotify_object=sp, filt=filt, log=log)
         sp_data.get_tracks(cache_status=settings.cache_status,
                         CACHE_RESULTS=settings.CACHE_RESULTS)
-        log.log("\n\n---------------------- MATCHING STAGE")
+        log.log("\n\n---------------------- MATCHING STAGE", True)
         # MATCH / CREATE PLAYLISTS
         matcher = song_matcher(CONVERTED_ROOT_PATH=settings.CONVERTED_ROOT_PATH,
                             TRANSFERED_ROOT_PATH=settings.TRANSFERED_ROOT_PATH,
