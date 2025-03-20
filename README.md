@@ -1,3 +1,8 @@
+# Music Matcher (FMCSPD.py)
+A command line tool to export Spotify playlists alongside local audio files.
+
+I can't remember what the acronym stood for.
+
 # Comandline Options
 <pre>
  LOGGING
