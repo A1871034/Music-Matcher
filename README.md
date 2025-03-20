@@ -58,22 +58,22 @@
 </pre>
 
 # Example Arguments
-## Overwrite Output Music for android
+## Overwrite output Music for android
 ```Bash
 py FMCSPD.py -v -l --bitrate 128k -o -b -c --min-playlist-songs 5 --owned-by-user -1 -p --playlist-path-location "\storage\emulated\0\Music\Music_CONVERTED" "D:\Music"
 ```
 
-## No Caches Android
+## No caches Android
 ```Bash
 py FMCSPD.py -v -l --bitrate 128k -b -c --min-playlist-songs 5 --owned-by-user -1 -p --playlist-path-location "\storage\emulated\0\Music\Music_CONVERTED" "D:\Music"
 ```
 
-## Local and spotify unchanged (use all caches)
+## Local and Spotify unchanged (use all caches)
 ```Bash
 py FMCSPD.py -v -l --bitrate 128k -b --cache-status 1 --min-playlist-songs 5 -p --owned-by-user -1 -t -p --playlist-path-location "\storage\emulated\0\Music\Music_CONVERTED" "D:\Music"
 ```
 
-## spotify unchanged (use spotify caches, re-cache converted)
+## Spotify unchanged (use Spotify caches, re-cache converted)
 ```Bash
 py FMCSPD.py -v -l --bitrate 128k -b -c --cache-status 1 --min-playlist-songs 5 -p --owned-by-user -1 -p --playlist-path-location "\storage\emulated\0\Music\Music_CONVERTED" "D:\Music"
 ```
