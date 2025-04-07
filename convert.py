@@ -10,7 +10,7 @@ import tag_utils
 
 # TODO: Only use mutagen for media tags / info
 class converter():
-    def __init__(self, path, write_path="", blacklist=False, bitrate="192k", overwrite=False, image_depth=-1, THREADS = None, log = None):
+    def __init__(self, path, write_path="", blacklist=False, bitrate="192k", overwrite=False, image_depth=-1, THREADS = None, RETAG_ONLY = False, log = None):
         self.path = path
         self.write_path = write_path
         self.use_blacklist = blacklist
@@ -18,6 +18,7 @@ class converter():
         self.overwrite=overwrite
         self.image_depth=image_depth
         self.THREADS = THREADS
+        self.RETAG_ONLY = RETAG_ONLY
         self.log = log
         self.CACHED_CONVERTED_FILE_PATH = "cache/all_converted_tracks.json"
         if not self.log:
@@ -151,16 +152,20 @@ class converter():
 
             self.log.log(f"\n--- {song}")
 
-            # Gate already done songs
-            if not self.overwrite and folder_existed:
-                try:
-                    if self.cached_converted[new_file]["modified_time"] == os.path.getmtime(file) and os.path.getsize(new_file) > 0:
-                        self.log.log(f"- Existing File: ↵ (> 0b) & (Base File Unmodified)\n{new_file}\n-- SKIPPED") 
-                        continue
-                    else: # File exists but modified time !=
-                        self.log.log(f"-- Existing File: Base File Modified or Converted File 0b (CONTINUING)\n{new_file}")
-                except (OSError, KeyError):
-                    pass               
+            # If RETAG_ONLY gate non-written songs
+            if self.RETAG_ONLY:
+                if (not folder_existed) or not (os.path.exists(new_file) and (os.path.getsize(new_file) > 0)):
+                    continue
+            # Otherwise Gate already done songs
+            elif not self.overwrite and folder_existed:
+                    try:
+                        if self.cached_converted[new_file]["modified_time"] == os.path.getmtime(file) and os.path.getsize(new_file) > 0:
+                            self.log.log(f"- Existing File: ↵ (> 0b) & (Base File Unmodified)\n{new_file}\n-- SKIPPED") 
+                            continue
+                        else: # File exists but modified time !=
+                            self.log.log(f"-- Existing File: Base File Modified or Converted File 0b (CONTINUING)\n{new_file}")
+                    except (OSError, KeyError):
+                        pass               
             
             self.log.log("-- Submitted to Executor")
             future_id = self.log.get_future()
@@ -178,12 +183,19 @@ class converter():
         output += f"- Read: {file_path}\n"
         output += f"- Write: {export_file_path}\n"
 
+        # When retaging we only consider already converted files.
+        if self.RETAG_ONLY:
+            to_read_file = export_file_path
+        else:
+            to_read_file = file_path
+
+
         # Load File
         try:
-            s = AudioSegment.from_file(file_path, format=file_path[file_path.rfind(".")+1:])
+            s = AudioSegment.from_file(to_read_file, format=to_read_file[to_read_file.rfind(".")+1:])
         except Exception as err:
             output += f"------- FAILED LOADING FILE -------\n{err}\n-----------------------\n"
-            self.failed.append(file_path)
+            self.failed.append(to_read_file)
             if future_id: # Should be provided when called asynchronously
                 self.log.submit_future(future_id, output)
             else:
@@ -220,15 +232,16 @@ class converter():
 
         # Will overwrite but haven't found any with it and its updating with a correct value anyway. so don't care
         tags_obj.tags["duration_ms"] = len(s) # len(s) == duration in ms of s which is orig song
-        
-        # Try Exporting
-        try:
-            s.export(export_file_path, format="mp3", bitrate=self.bitrate,tags=tags_obj.tags, cover=cover)
-            failed = False
-        except Exception as err:
-            output += f"------- FAILED EXPORTING FILE -------\n{err}\n-----------------------\n"
-            self.failed.append(file_path)
-            failed = True
+
+        # Try Exporting if not retagging only
+        failed = False
+        if not self.RETAG_ONLY:
+            try:
+                s.export(export_file_path, format="mp3", bitrate=self.bitrate,tags=tags_obj.tags, cover=cover)
+            except Exception as err:
+                output += f"------- FAILED EXPORTING FILE -------\n{err}\n-----------------------\n"
+                self.failed.append(file_path)
+                failed = True
 
         if not failed: # 
             tags_obj.clean_tags()

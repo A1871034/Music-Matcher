@@ -23,6 +23,7 @@ FMCSPD - Folder Music Converter and Spotify Playlists Downloader.
                          DEFAULT: -1
  --threads <# of threads>: desired number of threads to convert songs with, roughly correlates to # of ffmpeg processes
                          DEFAULT: min(32, os.cpu_count() + 4)
+ --retag-only : don't convert new songs, only re-tag existing converted songs.
 
  SPOTIFY
  --redirect-uri <url> : URL to redirect handler. use {PORT} for port and it will be replaced by the set port
