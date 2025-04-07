@@ -11,10 +11,11 @@ class song_scorer:
             "tracknumber":0
         }
         self.best_song = None
+        self.matched_splits = set()
+
         self.spotify_song = self.clean_spotify_song(spotify_song)
         self.log = log
         
-
     @staticmethod
     def clean_spotify_song(spotify_song):
         spotify_song["artists"] = str_utils.clean_tag_data(spotify_song["artists"])
@@ -23,6 +24,11 @@ class song_scorer:
         return spotify_song
 
     def matching_artists(self, song):
+        splitters = [" / ", " & ", " feat. "]
+        song_artists_split = set(song["artists"])
+        for splitter in splitters:
+            [song_artists_split.update(artists.split(splitter)) for artists in song["artists"]]
+        
         s = 0
         for artist in self.spotify_song["artists"]: #TODO: Fix up  this shit like idk cmp func and reduce iteratively with reducing functions
             matched = False
@@ -30,19 +36,22 @@ class song_scorer:
                 s += 1
                 continue
 
-            keyboard_artist = self.remove_non_keyboard_chars(artist)
+            keyboard_artist = str_utils.remove_non_keyboard_chars(artist)
             for spot_artist in song["artists"]:
-                if keyboard_artist  == self.remove_non_keyboard_chars(spot_artist):
+                if keyboard_artist  == str_utils.remove_non_keyboard_chars(spot_artist):
                     s += len(keyboard_artist)/len(artist)
                     matched = True
                     break
             if matched:
                 continue
 
-            for spliter in [" / ", " & "]: # iffy and if / and & in name possibility of double match
+            for spliter in splitters: # iffy and if / and & in name possibility of double match
                 for split_artist in artist.split(spliter):
-                    if split_artist in song["artists"]:
-                        self.log.log(f"Split Artist Matched: local \"{song['artists']}\", spotify \"{self.spotify_song['artists']}\" ")
+                    if split_artist in song_artists_split:
+                        to_print = str(song_artists_split) + str(self.spotify_song['artists'])
+                        if (to_print not in self.matched_splits):
+                            self.log.log(f"Split Artist Matched: local \"{song_artists_split}\", spotify \"{self.spotify_song['artists']}\" ")
+                            self.matched_splits.add(to_print)
                         s += len(split_artist)/len(artist)
         return s
     
@@ -55,44 +64,25 @@ class song_scorer:
         closeness = 1-(distance/(seconds_plus_minus*s_to_ms))**flatness
         return max(closeness,0)
 
-    # Omits anything after a, " - ", "(", or "["
-    @staticmethod
-    def name_postfix_omitter(orig_name):
-        name = orig_name.split(" ")
-        word_starting_omitters = ["-", "(", "["]
-        for i in range(1,len(name)): # Don't ommit start eg, "(What's The Story) Morning Glory?"
-            try:
-                if name[i][0] in word_starting_omitters:
-                    return " ".join(name[:i])
-            except IndexError:
-                pass
-        return orig_name
-    
-    @staticmethod
-    def remove_non_keyboard_chars(str_in):
-        keyboard_chars = "`1234567890-=qwertyuiop[]\\asdfghjkl;'zxcvbnm,./~!@#$%^&*()_+QWERTYUIOP{}|ASDFGHJKL:\"ZXCVBNM<>? "
-        str_out = ""
-        for char in str_in:
-            if char in keyboard_chars:
-                str_out += char
-        return str_out 
-
     # Gets increasingly aggressive
     @staticmethod
     def prop_matches_a(str_a, str_b):
+        if ((str_a is None) or (str_b is None)):
+            return 0
+
         clean_a = str_utils.clean_tag_data(str_a) # should already be clean
         clean_b = str_utils.clean_tag_data(str_b)
         if clean_a == clean_b:
             return 1
         
         # Below was having no effect
-        """keyboard_a = song_matcher.song_scorer.remove_non_keyboard_chars(str_a)
-        keyboard_b = song_matcher.song_scorer.remove_non_keyboard_chars(str_b)
+        """keyboard_a = str_utils.remove_non_keyboard_chars(str_a)
+        keyboard_b = str_utils.remove_non_keyboard_chars(str_b)
         if keyboard_a == keyboard_b:
             return len(keyboard_a)/len(clean_a)"""
         
-        postfix_ommited_a = song_scorer.name_postfix_omitter(clean_a)
-        postfix_ommited_b = song_scorer.name_postfix_omitter(clean_b)
+        postfix_ommited_a = str_utils.name_postfix_omitter(clean_a)
+        postfix_ommited_b = str_utils.name_postfix_omitter(clean_b)
 
         if postfix_ommited_a == postfix_ommited_b:
             return len(postfix_ommited_a)/len(clean_a)

@@ -204,7 +204,7 @@ class formater():
                         "tracks_href":i["tracks"]["href"],
                         "tracks_total":i["tracks"]["total"]}
             try:
-                if len(i["images"]) > 0:
+                if (i["images"] is not None) and (len(i["images"]) > 0):
                     temp_obj["img_url"] = i["images"][0]["url"]
                 else:
                     temp_obj["img_url"] = None
@@ -328,10 +328,14 @@ class spotify_data():
         for playlist in filtered_playlists:
             self.log.log(f"\n- Requesting Tracks from Playlist: \"{playlist['name']}\"")
             response = self.spotify.spotify_get(f"{playlist['tracks_href']}?limit=50&fields=next,items(added_at,track(name,album(name,genres),artists(name,genres),duration_ms,track_number))")
+            if response is None:
+                continue
             cur_tracks = []
             cur_tracks.extend(response["items"])
             while response["next"]:
                 response = self.spotify.spotify_get(f"{response['next']}&fields=next,items(added_at,track(name,album(name,genres),artists(name,genres),duration_ms,track_number))")
+                if response is None:
+                    continue
                 cur_tracks.extend(response["items"])
 
             cur_tracks = formater.format_tracks(cur_tracks) # will fail with same names but who has that and ill use id later
