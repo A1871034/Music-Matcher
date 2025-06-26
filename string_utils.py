@@ -1,3 +1,5 @@
+from re import sub as re_sub
+
 class str_utils:
     @staticmethod
     def clean_tag_data(inp):
@@ -24,13 +26,21 @@ class str_utils:
     @staticmethod
     def __stripper(s: str):
         character_blacklist = ["'", "\u2019"]
+        replacements = {"&":"and"}
         new_str = ""
         prev_c = None
         for c in s:
-            if (c not in character_blacklist) and not ((prev_c == " ") and (c == " ")):
+            if c in replacements.keys():
+                new_str += replacements[c]
+                prev_c = new_str[-1]
+            elif (c not in character_blacklist) and not ((prev_c == " ") and (c == " ")):
                 new_str += c
                 prev_c = c
         return new_str.strip().lower()
+    
+    @staticmethod
+    def only_alphanumeric(s: str):
+        return re_sub(r'\W+', '', s)
     
     @staticmethod
     def remove_non_keyboard_chars(str_in):

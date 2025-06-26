@@ -13,6 +13,8 @@ class song_scorer:
         self.best_song = None
         self.matched_splits = set()
 
+        self.NAME_THRESHOLD = 0.5
+
         self.spotify_song = self.clean_spotify_song(spotify_song)
         self.log = log
         
@@ -81,13 +83,22 @@ class song_scorer:
         if keyboard_a == keyboard_b:
             return len(keyboard_a)/len(clean_a)"""
         
+        pfo_ratio = 0
         postfix_ommited_a = str_utils.name_postfix_omitter(clean_a)
         postfix_ommited_b = str_utils.name_postfix_omitter(clean_b)
-
         if postfix_ommited_a == postfix_ommited_b:
-            return len(postfix_ommited_a)/len(clean_a)
+            pfo_ratio = len(postfix_ommited_a)/len(clean_a)
+            pfo_ratio = max(pfo_ratio, len(postfix_ommited_b)/len(clean_b))
+        
+        # Strip string to only alphanumeric
+        str_strip_ratio = 0
+        str_strip_a = str_utils.only_alphanumeric(clean_a)
+        str_strip_b = str_utils.only_alphanumeric(clean_b)
+        if str_strip_a == str_strip_b:
+            str_strip_ratio = len(str_strip_a)/len(clean_a)
+            str_strip_ratio = max(str_strip_ratio, len(str_strip_b)/len(clean_b))
 
-        return 0
+        return max(pfo_ratio, str_strip_ratio)
 
     def check_song(self, song):
         # Set base
@@ -117,11 +128,12 @@ class song_scorer:
     def not_mininmum_matched(self, match):
         if match["artists"] == 0:
             if match["name"] != 0 and match["duration_ms"] != 0 and match["album"] != 0:
-                self.log.log(f"Likely False Positive: Song (\"{self.spotify_song['name']}\") but No Spotify Artist \"{self.spotify_song['artists']}\" in {self.cur_song['artists']}")
+                self.log.log(f"Likely False Negative: Song (\"{self.spotify_song['name']}\") but No Spotify Artist \"{self.spotify_song['artists']}\" in {self.cur_song['artists']}")
                 self.likely_false_negative += 1
+                return False
             return True
 
-        if match["name"] == 0:
+        if match["name"] < self.NAME_THRESHOLD:
             return True
         
         return False
@@ -130,7 +142,7 @@ class song_scorer:
         song_matches = self.check_song(song)
 
         if self.not_mininmum_matched(song_matches):
-            #self.log.log(f"NOT MIN: {song['name']} | {self.spotify_song['name']}")
+            # self.log.log(f"NOT MIN: {song['name']} | {self.spotify_song['name']}")
             return
 
         for field, match_value in song_matches.items():
