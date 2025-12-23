@@ -12,7 +12,7 @@ from base64 import b64encode
 from logger import logger
 
 class spotify():
-    def __init__(self, CLIENT_SECRET, CLIENT_ID, REDIRECT_URI = "http://localhost:{PORT}/callback", PORT=3000, MAX_AUTHORISE_RETRIES=1, log = None):
+    def __init__(self, CLIENT_SECRET, CLIENT_ID, REDIRECT_URI = "http://127.0.0.1:{PORT}/callback", PORT=3000, MAX_AUTHORISE_RETRIES=1, log = None):
         self.CLIENT_SECRET = CLIENT_SECRET
         self.CLIENT_ID = CLIENT_ID
         self.PORT = PORT

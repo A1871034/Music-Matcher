@@ -184,7 +184,7 @@ class parser():
         self.RETAG_ONLY = False
 
         # SPOTIFY DATA
-        self.REDIRECT_URI = "http://localhost:{PORT}/callback"
+        self.REDIRECT_URI = "http://127.0.0.1:{PORT}/callback"
         self.PORT = 3000
         self.MAX_AUTHORISE_RETRIES=1
         try:
